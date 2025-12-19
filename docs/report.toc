@@ -1,0 +1,36 @@
+\babel@toc {russian}{}\relax 
+\contentsline {chapter}{ВВЕДЕНИЕ}{5}{chapter*.1}%
+\contentsline {chapter}{\numberline {1}Аналитический раздел}{6}{chapter.1}%
+\contentsline {section}{\numberline {1.1}Постановка задачи}{6}{section.1.1}%
+\contentsline {section}{\numberline {1.2}Драйверы в Linux}{6}{section.1.2}%
+\contentsline {section}{\numberline {1.3}USB-подсистема ядра Linux}{7}{section.1.3}%
+\contentsline {subsection}{\numberline {1.3.1}Структура USB-устройства}{7}{subsection.1.3.1}%
+\contentsline {subsection}{\numberline {1.3.2}Структура USB-драйвера}{7}{subsection.1.3.2}%
+\contentsline {subsection}{\numberline {1.3.3}Структура URB}{8}{subsection.1.3.3}%
+\contentsline {section}{\numberline {1.4}Подсистема ввода Linux}{9}{section.1.4}%
+\contentsline {subsection}{\numberline {1.4.1}Структура устройства ввода}{9}{subsection.1.4.1}%
+\contentsline {subsection}{\numberline {1.4.2}Типы событий ввода}{10}{subsection.1.4.2}%
+\contentsline {section}{\numberline {1.5}Протокол взаимодействия с Xbox Series S}{11}{section.1.5}%
+\contentsline {subsection}{\numberline {1.5.1}Структура входного пакета}{11}{subsection.1.5.1}%
+\contentsline {section}{\numberline {1.6}Выводы}{12}{section.1.6}%
+\contentsline {chapter}{\numberline {2}Конструкторский раздел}{14}{chapter.2}%
+\contentsline {section}{\numberline {2.1}Последовательность действий ПО}{14}{section.2.1}%
+\contentsline {section}{\numberline {2.2}Архитектура драйвера}{14}{section.2.2}%
+\contentsline {section}{\numberline {2.3}Алгоритм обработки ввода}{15}{section.2.3}%
+\contentsline {section}{\numberline {2.4}Алгоритм эмуляции мыши}{15}{section.2.4}%
+\contentsline {section}{\numberline {2.5}Инициализация контроллера}{16}{section.2.5}%
+\contentsline {chapter}{\numberline {3}Технологический раздел}{17}{chapter.3}%
+\contentsline {section}{\numberline {3.1}Выбор языка и среды программирования}{17}{section.3.1}%
+\contentsline {section}{\numberline {3.2}Функциональность разработанного ПО}{17}{section.3.2}%
+\contentsline {section}{\numberline {3.3}Структура данных драйвера}{18}{section.3.3}%
+\contentsline {section}{\numberline {3.4}Инициализация USB-драйвера}{18}{section.3.4}%
+\contentsline {section}{\numberline {3.5}Параметры модуля}{19}{section.3.5}%
+\contentsline {section}{\numberline {3.6}Листинг загружаемого модуля ядра}{19}{section.3.6}%
+\contentsline {chapter}{\numberline {4}Исследовательский раздел}{20}{chapter.4}%
+\contentsline {section}{\numberline {4.1}Загрузка модуля}{20}{section.4.1}%
+\contentsline {section}{\numberline {4.2}Тестирование кнопок мыши}{20}{section.4.2}%
+\contentsline {section}{\numberline {4.3}Тестирование движения курсора}{20}{section.4.3}%
+\contentsline {chapter}{ЗАКЛЮЧЕНИЕ}{22}{figure.caption.8}%
+\contentsline {chapter}{ПРИЛОЖЕНИЕ А}{23}{Item.20}%
+\contentsline {chapter}{СПИСОК ИСПОЛЬЗОВАННЫХ ИСТОЧНИКОВ}{23}{Item.20}%
+\contentsline {chapter}{ПРИЛОЖЕНИЕ Б}{38}{lstnumber.-1.572}%

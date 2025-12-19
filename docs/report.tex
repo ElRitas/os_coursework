@@ -1,0 +1,32 @@
+\documentclass{bmstu}
+
+\include{preamble}
+
+\bibliography{sources}
+
+\begin{document}
+
+\includepdf[pages=-]{./static/title_and_tz.pdf}
+
+% Содержание
+\include{content.tex}
+
+% Введение
+\include{intro.tex}
+
+% Основная часть
+\include{analitic.tex}
+\include{design.tex}
+\include{technological.tex}
+\include{research.tex}
+
+% Заключение
+\include{conclusion.tex}
+
+% Список использованных источников
+\makebibliography
+
+\include{prilozhenieA.tex}
+\include{prilozhenieB.tex}
+
+\end{document}

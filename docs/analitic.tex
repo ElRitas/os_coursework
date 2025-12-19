@@ -1,0 +1,229 @@
+\chapter{Аналитический раздел}
+
+\section{Постановка задачи}
+
+В соответствии с заданием на курсовую работу необходимо разработать драйвер для геймпада Xbox Series S, выполняющий функции мыши с возможностью регулировки чувствительности.
+
+Для выполнения задания требуется решить следующие задачи:
+\begin{enumerate}
+	\item провести анализ существующих подходов к обработке устройств ввода в Linux;
+	\item исследовать протоколы взаимодействия с контроллером Xbox Series S;
+	\item разработать алгоритмы преобразования ввода геймпада в события мыши;
+	\item реализовать драйвер в виде загружаемого модуля ядра Linux;
+	\item провести тестирование и исследование разработанного ПО.
+\end{enumerate}
+
+\section{Драйверы в Linux}
+
+В современных ядрах \texttt{Linux} изменение функциональности внешних устройств возможно с помощью драйверов, представляющих собой загружаемые модули ядра. Драйверы полностью скрывают детали, касающиеся работы устройства и предоставляют чёткий программный интерфейс для работы с аппаратурой. 
+
+Для реализации драйвера Xbox Series S выбран подход загружаемого модуля ядра, который обеспечивает:
+\begin{itemize}[label=---]
+	\item Гибкость конфигурации без перезагрузки системы;
+	\item Автоматическое определение подключения контроллера;
+	\item Интеграцию с существующей подсистемой ввода Linux;
+	\item Возможность параметрической настройки через модульные параметры.
+\end{itemize}
+
+\section{USB-подсистема ядра Linux}
+
+Xbox Series S контроллер использует USB-подключение с протоколом GIP (Game Input Protocol). USB-подсистема ядра \texttt{Linux} предоставляет унифицированный интерфейс для работы с такими устройствами. Архитектура USB предполагает древовидную топологию с хост-контроллером в корне, хабами для расширения и конечными устройствами [1].
+
+\subsection{Структура USB-устройства}
+
+Основной структурой для представления USB-устройства в ядре Linux является:
+
+\begin{lstlisting}[label=lst:usb_device,caption=Структура usb\_device,language=c]
+struct usb_device {
+    struct usb_device_descriptor descriptor;  // Дескриптор устройства
+    struct usb_host_config *config;           // Конфигурации устройства
+    struct usb_host_endpoint ep_in[16];       // Конечные точки ввода
+    struct usb_host_endpoint ep_out[16];      // Конечные точки вывода
+    
+    char devpath[16];                         // Путь устройства
+    enum usb_device_state state;              // Состояние устройства
+    struct device dev;                        // Родительская структура device
+};
+\end{lstlisting}
+
+\subsection{Структура USB-драйвера}
+
+Каждый USB-драйвер должен определить структуру:
+
+\begin{lstlisting}[label=lst:usb_driver,caption=Структура usb\_driver,language=c]
+struct usb_driver {
+    const char *name;                        // Имя драйвера
+    
+    int (*probe)(struct usb_interface *intf, // Функция обнаружения
+                 const struct usb_device_id *id);
+                 
+    void (*disconnect)(struct usb_interface *intf); // Функция отключения
+    
+    int (*suspend)(struct usb_interface *intf, // Приостановка
+                   pm_message_t message);
+                   
+    int (*resume)(struct usb_interface *intf); // Возобновление
+    
+    const struct usb_device_id *id_table;    // Таблица ID устройств
+    struct module *owner;                    // Владелец модуля
+};
+\end{lstlisting}
+
+\subsection{Структура URB}
+
+Для асинхронного обмена данными с USB-устройством используется URB (USB Request Block):
+
+\begin{lstlisting}[label=lst:urb,caption=Структура urb,language=c]
+struct urb {
+    struct usb_device *dev;                 // USB-устройство
+    unsigned int pipe;                      // Канал передачи
+    
+    void *transfer_buffer;                  // Буфер данных
+    u32 transfer_buffer_length;             // Размер буфера
+    dma_addr_t transfer_dma;                // DMA-адрес буфера
+    
+    int status;                             // Статус операции
+    u32 actual_length;                      // Фактическая длина
+    
+    void *context;                          // Контекст для callback
+    usb_complete_t complete;                // Функция завершения
+    
+    unsigned int transfer_flags;            // Флаги передачи
+    unsigned int interval;                  // Интервал для interrupt
+};
+\end{lstlisting}
+
+Для драйвера Xbox Series S используется тип передачи данных \textbf{interrupt}, который предназначен для коротких пакетов со спонтанным характером (до 64 байт на полной скорости). Это оптимальный выбор для устройств ввода, передающих координаты и состояние кнопок.
+
+Каждый USB-драйвер должен определить:
+\begin{itemize}[label=---]
+    \item Таблицу идентификаторов устройств (\texttt{struct usb\_device\_id}), связывающую драйвер с конкретными vendor (0x045e для Microsoft) и product ID (0x0b12 для Xbox Series S);
+    \item Структуру драйвера (\texttt{usb\_driver}) с callback-функциями (\texttt{probe}, \texttt{disconnect}, \texttt{id\_table});
+    \item Функцию инициализации модуля через макрос \texttt{module\_usb\_driver}.
+\end{itemize}
+
+\section{Подсистема ввода Linux}
+
+Для интеграции с системой ввода Linux используется структура \texttt{struct input\_dev}, которая является фундаментальным компонентом подсистемы ввода/вывода. Данная подсистема абстрагирует физические устройства ввода в единую модель, что позволяет приложениям получать события от любых устройств через унифицированный интерфейс.
+
+\subsection{Структура устройства ввода}
+
+\begin{lstlisting}[label=lst:input_dev,caption=Структура input\_dev,language=c]
+struct input_dev {
+    const char *name;                       // Имя устройства
+    const char *phys;                       // Физический путь
+    const char *uniq;                       // Уникальный идентификатор
+    
+    unsigned long evbit[BITS_TO_LONGS(EV_CNT)];  // Поддерживаемые типы событий
+    unsigned long keybit[BITS_TO_LONGS(KEY_CNT)]; // Коды клавиш
+    unsigned long relbit[BITS_TO_LONGS(REL_CNT)]; // Относительные перемещения
+    unsigned long absbit[BITS_TO_LONGS(ABS_CNT)]; // Абсолютные координаты
+    
+    int (*open)(struct input_dev *dev);     // Функция открытия
+    void (*close)(struct input_dev *dev);   // Функция закрытия
+    
+    void *private;                          // Приватные данные драйвера
+    struct device dev;                      // Родительская структура device
+};
+\end{lstlisting}
+
+\subsection{Типы событий ввода}
+
+Основные типы событий, используемые в драйвере Xbox Series S:
+
+\begin{lstlisting}[label=lst:input_events,caption=Типы событий ввода,language=c]
+// Типы событий (evbit)
+#define EV_KEY      0x01    // Клавишные события
+#define EV_REL      0x02    // Относительные перемещения
+#define EV_ABS      0x03    // Абсолютные координаты
+
+// Коды кнопок мыши (keybit)
+#define BTN_LEFT    0x110   // Левая кнопка мыши
+#define BTN_RIGHT   0x111   // Правая кнопка мыши
+#define BTN_MIDDLE  0x112   // Средняя кнопка мыши
+
+// Относительные оси (relbit)
+#define REL_X       0x00    // Перемещение по X
+#define REL_Y       0x01    // Перемещение по Y
+\end{lstlisting}
+
+Для устройства мыши устанавливаются следующие типы событий:
+\begin{itemize}[label=---]
+    \item EV\_KEY — для кнопок мыши (BTN\_LEFT, BTN\_RIGHT, BTN\_MIDDLE);
+    \item EV\_REL — для относительного перемещения (REL\_X, REL\_Y, REL\_WHEEL).
+\end{itemize}
+
+\section{Протокол взаимодействия с Xbox Series S}
+
+Контроллер Xbox Series S использует протокол GIP (Game Input Protocol) с несколькими типами команд:
+\begin{itemize}[label=---]
+    \item GIP\_CMD\_INPUT (0x20) — основной пакет с данными о состоянии контроллера;
+    \item GIP\_CMD\_POWER (0x05) — команды управления питанием;
+    \item GIP\_CMD\_VIRTUAL\_KEY (0x07) — виртуальные клавиши (кнопка Xbox).
+\end{itemize}
+
+\subsection{Структура входного пакета}
+
+\begin{lstlisting}[label=lst:xbox_packet,caption=Структура пакета Xbox Series S,language=c]
+struct xboxone_input_report {
+    u8 command;                     // Команда (0x20 для данных ввода)
+    u8 reserved;                    // Зарезервировано
+    u8 sequence;                    // Последовательный номер
+    u8 length;                      // Длина данных
+    
+    // Байт 4: основные кнопки
+    // bit 0: Menu (Start)
+    // bit 1: View (Select)
+    // bit 2: A button
+    // bit 3: B button
+    // bit 4: X button
+    // bit 5: Y button
+    u8 buttons_main;
+    
+    // Байт 5: дополнительные кнопки
+    u8 buttons_extra;
+    
+    // Байты 6-9: триггеры (16-битные)
+    u16 left_trigger;
+    u16 right_trigger;
+    
+    // Байты 10-13: левый стик (16-битные)
+    u16 left_stick_x;
+    u16 left_stick_y;
+    
+    // Байты 14-17: правый стик (16-битные)
+    u16 right_stick_x;
+    u16 right_stick_y;
+} __attribute__((packed));
+\end{lstlisting}
+
+Структура основного входного пакета включает:
+\begin{itemize}[label=---]
+    \item Байты 4-7: состояние кнопок (A, B, X, Y, START, SELECT и др.);
+    \item Байты 10-17: значения аналоговых стиков (16-битные значения);
+    \item Байты 6-9: значения триггеров.
+\end{itemize}
+
+Для инициализации контроллера требуется отправка специального пакета питания \texttt{xboxone\_power\_on}:
+
+\begin{lstlisting}[label=lst:power_on,caption=Пакет инициализации Xbox Series S,language=c]
+static const u8 xboxone_power_on[] = {
+    0x05,       // GIP_CMD_POWER
+    0x20,       // GIP_OPT_INTERNAL
+    0x00,       // GIP_SEQ0
+    0x01,       // Длина данных
+    0x00        // GIP_PWR_ON
+};
+\end{lstlisting}
+
+\section{Выводы}
+
+В результате проведённого анализа было определено следующее:
+\begin{itemize}[label=---]
+	\item Драйвер будет реализован в виде загружаемого модуля ядра Linux с использованием структур \texttt{usb\_driver} и \texttt{module\_usb\_driver};
+	\item Для передачи данных будет использоваться структура \texttt{struct urb} с типом передачи interrupt;
+	\item Будут созданы два устройства ввода (\texttt{struct input\_dev}): геймпад и эмулятор мыши;
+	\item Для эмуляции мыши будут преобразовываться данные аналоговых стиков в относительные движения курсора через события EV\_REL;
+	\item Кнопки A, B будут эмулировать левую и правую кнопки мыши соответственно через события EV\_KEY;
+	\item Правый стик будет использоваться для эмуляции прокрутки колесика мыши через события REL\_WHEEL и REL\_HWHEEL.
+\end{itemize}

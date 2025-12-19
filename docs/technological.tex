@@ -1,0 +1,100 @@
+\chapter{Технологический раздел}
+
+\section{Выбор языка и среды программирования}
+
+В качестве языка программирования был выбран язык \texttt{C}~\cite{cdocs}, так как он является основным языком для разработки драйверов ядра Linux и обеспечивает прямой доступ к низкоуровневым функциям системы.
+
+Для компиляции драйвера используется \texttt{gcc}~\cite{gccdocs} с флагами, соответствующими версии ядра Linux. В качестве среды разработки выбран текстовый редактор \texttt{Neovim}~\cite{nvimdocs} с плагинами для работы с кодом ядра.
+
+Сборка драйвера осуществляется с помощью \texttt{Makefile}, который автоматизирует процесс компиляции и учитывает зависимости от версии ядра.
+
+\section{Функциональность разработанного ПО}
+
+Разработанный драйвер преобразует контроллер Xbox Series S в устройство ввода типа "мышь" с расширенными возможностями. Основная функциональность включает:
+
+\begin{enumerate}
+	\item Назначение кнопок контроллера на функции мыши:
+	\begin{itemize}[label=---]
+		\item Кнопка A — левая кнопка мыши;
+		\item Кнопка В — правая кнопка мыши;
+		\item Кнопка X - средняя кнопка мыши.
+	\end{itemize}
+	\item Функцию перемещения курсора мыши с помощью стиков геймпада.
+	\item Регулируемые параметры чувствительности:
+	\begin{itemize}[label=---]
+		\item Чувствительность движения курсора;
+		\item Чувствительность прокрутки;
+		\item Размер мертвой зоны;
+	\end{itemize}
+	\item Автоматическое определение контроллера при подключении через USB.
+\end{enumerate}
+
+Драйвер работает в фоновом режиме, автоматически определяя подключение контроллера и обеспечивая бесшовную интеграцию с существующей системой ввода Linux.
+
+\section{Структура данных драйвера}
+
+Основные структуры данных драйвера:
+
+\begin{lstlisting}[label=lst:shandler,caption=Структура драйвера Xbox Series S, language=c]
+struct usb_xpad {
+    struct input_dev *dev;          // Основное устройство ввода (геймпад)
+    struct usb_device *udev;        // USB-устройство
+    struct usb_interface *intf;     // USB-интерфейс
+    
+    struct xpad_mouse *mouse;       // Структура для эмуляции мыши
+    unsigned char *idata;           // Буфер входящих данных
+    unsigned char *odata;           // Буфер исходящих данных
+    
+    int mapping;                    // Карта преобразования ввода
+    int xtype;                      // Тип контроллера
+    const char *name;               // Имя устройства
+};
+
+struct xpad_mouse {
+    struct input_dev *dev;          // Устройство мыши
+    bool left_button;               // Состояние левой кнопки
+    bool right_button;              // Состояние правой кнопки  
+    bool middle_button;             // Состояние средней кнопки
+    int deadzone;                   // Мертвая зона для стиков
+};
+\end{lstlisting}
+
+\section{Инициализация USB-драйвера}
+
+\begin{lstlisting}[label=lst:usbinit,caption=Инициализация USB-драйвера, language=c]
+static struct usb_device_id xpad_table[] = {
+    { USB_DEVICE(0x045e, 0x0b12) }, // Xbox Series S|X Controller
+    {}
+};
+
+static struct usb_driver xpad_driver = {
+    .name = "xpad_xbox_series",
+    .probe = xpad_probe,
+    .disconnect = xpad_disconnect,
+    .suspend = xpad_suspend,
+    .resume = xpad_resume,
+    .id_table = xpad_table,
+};
+\end{lstlisting}
+
+Поля структуры \texttt{usb\_driver}:
+\begin{itemize}[label=---]
+	\item \texttt{name} — имя драйвера, отображаемое в системных логах;
+	\item \texttt{probe} — функция, вызываемая при обнаружении поддерживаемого устройства;
+	\item \texttt{disconnect} — функция, вызываемая при отключении устройства;
+	\item \texttt{suspend/resume} — функции управления энергосбережением;
+	\item \texttt{id\_table} — таблица идентификаторов USB-устройств.
+\end{itemize}
+
+\section{Параметры модуля}
+
+Драйвер поддерживает настройку через параметры модуля:
+\begin{itemize}[label=---]
+	\item \texttt{mouse\_emulation} — включение/выключение эмуляции мыши;
+	\item \texttt{mouse\_sensitivity} — чувствительность движения курсора (1-10);
+	\item \texttt{scroll\_sensitivity} — чувствительность прокрутки (1-10).
+\end{itemize}
+
+\section{Листинг загружаемого модуля ядра}
+
+Исходный код загружаемого модуля и файла сборки представлены в приложениях А и Б соответственно.
